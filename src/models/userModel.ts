@@ -1,15 +1,18 @@
-import { model, Schema } from "mongoose";
-import { IUser } from "../interfaces/IUser";
+import { model, Schema } from 'mongoose';
+import { IUser } from '../interfaces/IUser';
+import bcrypt from 'bcryptjs';
 
-const userSchema: Schema<IUser> = new Schema(
+const userSchema = new Schema<IUser>(
   {
     name: {
       type: String,
-      required: [true, "Name is a required field"],
+      required: [true, 'Name is a required field.'],
+      minLength: [1, 'Name must be 1 character or more.'],
+      maxLength: [124, 'Name must be 124 characters or less.'],
     },
     email: {
       type: String,
-      required: [true, "Email is a required field"],
+      required: [true, 'Email is a required field.'],
       unique: true,
       lowercase: true,
       // TODO: Validate email formate
@@ -17,20 +20,60 @@ const userSchema: Schema<IUser> = new Schema(
     photo: String,
     password: {
       type: String,
-      required: [true, "Password is a required field"],
-      minLength: [8, "Password length must be 8 characters or more"],
-      maxLength: [64, "Password length must be 64 characters or less"],
+      required: [true, 'Password is a required field.'],
+      minLength: [8, 'Password length must be 8 characters or more.'],
+      maxLength: [64, 'Password length must be 64 characters or less.'],
+      select: false,
     },
     confirmPassword: {
       type: String,
-      required: [true, "Confirm Password is a required field"],
-      minLength: [8, "Password length must be 8 characters or more"],
-      maxLength: [64, "Password length must be 64 characters or less"],
+      required: [true, 'Confirm Password is a required field.'],
+      minLength: [8, 'Password length must be 8 characters or more.'],
+      maxLength: [64, 'Password length must be 64 characters or less.'],
+      //  NOTE: This validator, will only work on the .save() mongoDB method.
+      validate: {
+        validator: function (this: IUser, el: string) {
+          return this.password === el;
+        },
+        message: 'Password are not the same.',
+      },
+    },
+    changedPasswordAt: {
+      type: Date,
     },
   },
-  {}
+  { versionKey: false }
 );
 
-const User = model<IUser>("User", userSchema);
+userSchema.pre<IUser>('save', async function (next: (err?: Error) => void) {
+  //  This will ensure that the code will only run if the password has been modified.
+  if (!this.isModified('password')) {
+    return next();
+  }
+
+  // Hash password with cost of 12.
+  this.password = await bcrypt.hash(this.password, 12);
+
+  // Delete the confirm password.
+  this.confirmPassword = undefined;
+  next();
+});
+
+userSchema.methods.isPasswordCorrect = async function (
+  candidatePassword: string,
+  userPassword: string
+): Promise<boolean> {
+  return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.hasChangedPassword = function (jwtTimestamp: number): boolean {
+  if (this.changedPasswordAt) {
+    const changedTimeStamp = Math.floor(this.changedPasswordAt.getTime() / 1000);
+    return changedTimeStamp > jwtTimestamp;
+  }
+  return false;
+};
+
+const User = model<IUser>('User', userSchema);
 
 export default User;
