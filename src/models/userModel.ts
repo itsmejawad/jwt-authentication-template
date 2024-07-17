@@ -1,6 +1,7 @@
 import { model, Schema } from 'mongoose';
 import { IUser, UserRole } from '../interfaces/IUser';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const userSchema = new Schema<IUser>(
   {
@@ -46,23 +47,43 @@ const userSchema = new Schema<IUser>(
     changedPasswordAt: {
       type: Date,
     },
+    passwordResetToken: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
   },
   { versionKey: false }
 );
 
-userSchema.pre<IUser>('save', async function (next: (err?: Error) => void) {
-  //  This will ensure that the code will only run if the password has been modified.
-  if (!this.isModified('password')) {
-    return next();
+userSchema.pre<IUser>(
+  'save',
+  async function (this: IUser, next: (err?: Error) => void): Promise<void> {
+    //  This will ensure that the code will only run if the password has been modified.
+    if (!this.isModified('password')) {
+      return next();
+    }
+
+    // Hash password with cost of 12.
+    this.password = await bcrypt.hash(this.password, 12);
+
+    // Delete the confirm password.
+    this.confirmPassword = undefined;
+    next();
   }
+);
 
-  // Hash password with cost of 12.
-  this.password = await bcrypt.hash(this.password, 12);
-
-  // Delete the confirm password.
-  this.confirmPassword = undefined;
-  next();
-});
+userSchema.pre<IUser>(
+  'save',
+  async function (this: IUser, next: (err?: Error) => void): Promise<void> {
+    if (!this.isModified('password') || this.isNew) {
+      return next();
+    }
+    this.changedPasswordAt = new Date(Date.now() - 1000);
+    next();
+  }
+);
 
 userSchema.methods.isPasswordCorrect = async function (
   candidatePassword: string,
@@ -71,12 +92,19 @@ userSchema.methods.isPasswordCorrect = async function (
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-userSchema.methods.hasChangedPassword = function (jwtTimestamp: number): boolean {
+userSchema.methods.hasChangedPassword = function (this: IUser, jwtTimestamp: number): boolean {
   if (this.changedPasswordAt) {
     const changedTimeStamp = Math.floor(this.changedPasswordAt.getTime() / 1000);
     return changedTimeStamp > jwtTimestamp;
   }
   return false;
+};
+
+userSchema.methods.generateResetPasswordToken = function (this: IUser): string {
+  const resetPasswordToken = crypto.randomBytes(32).toString('hex');
+  this.passwordResetToken = crypto.createHash('sha256').update(resetPasswordToken).digest('hex');
+  this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
+  return resetPasswordToken;
 };
 
 const User = model<IUser>('User', userSchema);

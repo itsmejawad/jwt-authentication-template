@@ -1,15 +1,11 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 
-type MiddlewareAsyncFunction = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => Promise<void>;
+// type MiddlewareAsyncFunction = (req: Request, res: Response, next: NextFunction) => RequestHandler;
 
-const asyncErrorHandler = (fn: MiddlewareAsyncFunction) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+const asyncErrorHandler = (fn: RequestHandler): RequestHandler => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      await fn(req, res, next);
+      fn(req, res, next);
     } catch (err) {
       next(err);
     }

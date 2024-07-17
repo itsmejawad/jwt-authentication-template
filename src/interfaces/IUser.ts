@@ -12,8 +12,12 @@ export interface IUser extends Document {
   photo?: string;
   role: UserRole;
   password: string;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
   confirmPassword?: string;
   changedPasswordAt?: Date;
+
   isPasswordCorrect(candidatePassword: string, userPassword: string): Promise<boolean>;
-  hasChangedPassword(jwtTimestamp: number): boolean;
+  hasChangedPassword(this: IUser, jwtTimestamp: number): boolean;
+  generateResetPasswordToken(this: IUser): string;
 }
