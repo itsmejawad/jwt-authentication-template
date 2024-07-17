@@ -9,13 +9,17 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/forgot-password', authController.forgotPassword);
 router.patch('/reset-password/:token', authController.resetPassword);
-// router.post('/reset-password', authController.login);
+
+// Protect all routes after this middleware
+router.use(authController.protect);
+
+router.patch('/update-password', authController.updatePassword);
 
 // User Controllers
-router.route('/').get(authController.protect, userController.getAllUsers);
+router.route('/').get(userController.getAllUsers);
 router
   .route('/:id')
   .get(userController.getUser)
-  .delete(authController.protect, authController.restrictTo('admin'), userController.deleteUser);
+  .delete(authController.restrictTo('admin'), userController.deleteUser);
 
 export default router;

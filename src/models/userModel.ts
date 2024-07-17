@@ -41,7 +41,7 @@ const userSchema = new Schema<IUser>(
         validator: function (this: IUser, el: string) {
           return this.password === el;
         },
-        message: 'Password are not the same.',
+        message: 'Passwords are not the same.',
       },
     },
     changedPasswordAt: {

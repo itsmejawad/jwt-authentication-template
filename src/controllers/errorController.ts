@@ -30,17 +30,34 @@ const sendErrorToProduction = (err: AppError, res: Response) => {
   }
 };
 
+// MongoDB Errors
 const handleCastErrorMongoDb = (err: CastError) => {
-  return new AppError(`Invalid ${err.path}: ${err.value}`, 400);
+  new AppError(`Invalid ${err.path}: ${err.value}`, 400);
 };
+
+const handleDuplicateFieldsMongoDb = (err: any) => {
+  const value = err.message.match(/(["'])(\\?.)*?\1/)[0];
+  const message = `Duplicate field value: ${value}. Please use another value!`;
+  return new AppError(message, 400);
+};
+
+const handleValidationErrorMongoDb = (err: any) => {
+  const errors = Object.values(err.errors).map((el: any) => el.message);
+  const message = `Invalid input data. ${errors.join('. ')}`;
+  return new AppError(message, 400);
+};
+
+// JWT Token Errors
+
 const handleJwtTokenError = () => new AppError(`Invalid token.`, 401);
+
 const handleJwtExpiredTokenError = () => new AppError(`Token has expired.`, 401);
 
+// Global Error Middleware
 const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
-  // For more security, we are only sending the error details when in development environment.
   if (process.env.NODE_ENV === 'development') {
     sendErrorToDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
@@ -50,7 +67,8 @@ const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFun
     // TODO: Handle all MongoDB errors.
     // MongoDB Errors:
     if (err.name === 'CastError') error = handleCastErrorMongoDb(error);
-
+    if (error.code === 11000) error = handleDuplicateFieldsMongoDb(error);
+    if (err.name === 'ValidationError') error = handleValidationErrorMongoDb(error);
     // JWT Errors:
     if (err.name === 'JsonWebTokenError') error = handleJwtTokenError();
     if (err.name === 'TokenExpiredError') error = handleJwtExpiredTokenError();

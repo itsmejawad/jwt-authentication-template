@@ -1,20 +1,35 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
-dotenv.config({ path: "./.env" });
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-import app from "./app";
+process.on('uncaughtException', (err: Error) => {
+  console.log(err.name, err.message);
+  console.log('Uncaught Exception!');
+  process.exit(1);
+});
 
-const DB = process.env.DATABASE!;
-(async () => {
-  try {
-    await mongoose.connect(DB);
-    console.log(`Connected to MongoDB Database.`);
-  } catch (err) {
-    console.log(`Error connecting with MongoDB Database.`);
-  }
-})();
+dotenv.config({ path: './.env' });
+
+import app from './app';
+
+const DB = process.env.DATABASE;
+mongoose.connect(DB!).then(() => console.log(`Connected to MongoDB Database.`));
 
 const port = process.env.PORT || 8000;
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server running on port ${port}.`);
+});
+
+process.on('unhandledRejection', (err: Error) => {
+  console.log(err.name, err.message);
+  console.log('Unhandled Rejection!');
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM Received.');
+  server.close(() => {
+    console.log('Process terminated!');
+  });
 });

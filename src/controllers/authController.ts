@@ -14,6 +14,15 @@ const signToken = (id: string): string => {
   });
 };
 
+const createSendToken = (user: IUser, statusCode: number, res: Response): void => {
+  const token = signToken(user._id as string);
+
+  res.status(statusCode).json({
+    status: 'success',
+    token,
+  });
+};
+
 interface JwtPayload {
   id: string;
   iat: number;
@@ -53,15 +62,7 @@ const register: RequestHandler = asyncErrorHandler(
     const newUser: IUser = new User(validatedData.data);
     await newUser.save();
 
-    const token = signToken(newUser._id as string);
-
-    res.status(201).json({
-      status: 'success',
-      token,
-      data: {
-        user: newUser,
-      },
-    });
+    createSendToken(newUser, 201, res);
   }
 );
 
@@ -89,12 +90,7 @@ const login: RequestHandler = asyncErrorHandler(
     }
 
     // 5) Send token to user.
-    const token = signToken(user._id as string);
-
-    res.status(200).json({
-      status: 'success',
-      token,
-    });
+    createSendToken(user, 200, res);
   }
 );
 
@@ -216,16 +212,39 @@ const resetPassword: RequestHandler = asyncErrorHandler(
     user.passwordResetToken = undefined;
     await user.save();
 
-    // Update the changedPasswordAt to now
-    // user.changedPasswordAt;
+    // Update the changedPasswordAt to now (Done using the built in Middleware in userModel)
 
     // Send token to the user
-    const token = signToken(user._id as string);
-
-    res.status(200).json({
-      status: 'success',
-      token,
-    });
+    createSendToken(user, 200, res);
   }
 );
-export default { register, login, protect, restrictTo, forgotPassword, resetPassword };
+
+const updatePassword: RequestHandler = asyncErrorHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // Get the logged in user
+    const user: IUser | null = await User.findById(req?.user?.id).select('+password');
+
+    // Check if the entered password matches the actual password
+    if (!user || !(await user?.isPasswordCorrect(req.body.currentPassword, user.password))) {
+      return next(new AppError('Your current password is wrong.', 401));
+    }
+
+    // Update password
+    user.password = req.body.password;
+    user.confirmPassword = req.body.confirmPassword;
+    await user.save();
+
+    // Send token to the user
+    createSendToken(user, 200, res);
+  }
+);
+
+export default {
+  register,
+  login,
+  protect,
+  restrictTo,
+  forgotPassword,
+  resetPassword,
+  updatePassword,
+};

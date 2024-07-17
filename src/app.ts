@@ -17,7 +17,7 @@ app.use(morgan('dev'));
 app.use('/api/v1/users', userRouter);
 
 // Handle undefined routes (Operational Errors)
-app.all('*', (req: Request, res: Response, next: NextFunction) => {
+app.all('*', (req: Request, res: Response, next: NextFunction): void => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 

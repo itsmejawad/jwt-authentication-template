@@ -1,11 +1,14 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
-// type MiddlewareAsyncFunction = (req: Request, res: Response, next: NextFunction) => RequestHandler;
+// Define a type that includes functions returning a Promise
+// NOTE: Check TypeScript here again.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AsyncRequestHandler = (req: Request, res: Response, next: NextFunction) => Promise<any> | void;
 
-const asyncErrorHandler = (fn: RequestHandler): RequestHandler => {
+const asyncErrorHandler = (fn: AsyncRequestHandler) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      fn(req, res, next);
+      await fn(req, res, next);
     } catch (err) {
       next(err);
     }
