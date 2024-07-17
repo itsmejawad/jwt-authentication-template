@@ -23,4 +23,15 @@ const getUser = asyncErrorHandler(async (req: Request, res: Response, next: Next
   });
 });
 
-export default { getAllUsers, getUser };
+const deleteUser = asyncErrorHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+
+  await User.findByIdAndDelete(id);
+
+  res.status(200).json({
+    status: 'success',
+    user: null,
+  });
+});
+
+export default { getAllUsers, getUser, deleteUser };

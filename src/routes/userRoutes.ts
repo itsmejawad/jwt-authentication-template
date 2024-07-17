@@ -4,9 +4,15 @@ import authController from '../controllers/authController';
 
 const router = express.Router();
 
+// Auth Controllers
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+
+// User Controllers
 router.route('/').get(authController.protect, userController.getAllUsers);
-router.route('/:id').get(userController.getUser);
+router
+  .route('/:id')
+  .get(userController.getUser)
+  .delete(authController.protect, authController.restrictTo('admin'), userController.deleteUser);
 
 export default router;

@@ -1,5 +1,5 @@
 import { model, Schema } from 'mongoose';
-import { IUser } from '../interfaces/IUser';
+import { IUser, UserRole } from '../interfaces/IUser';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new Schema<IUser>(
@@ -18,6 +18,11 @@ const userSchema = new Schema<IUser>(
       // TODO: Validate email formate
     },
     photo: String,
+    role: {
+      type: String,
+      enum: Object.values(UserRole),
+      default: UserRole.User,
+    },
     password: {
       type: String,
       required: [true, 'Password is a required field.'],

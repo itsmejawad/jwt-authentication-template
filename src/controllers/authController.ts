@@ -34,6 +34,7 @@ const jwtVerifyPromisified = (token: string, secret: string): Promise<JwtPayload
   });
 };
 
+// TODO: Make sure to hide the password in the JSON response.
 const register = asyncErrorHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { name, email, password, confirmPassword } = req.body;
 
@@ -93,6 +94,12 @@ const login = asyncErrorHandler(async (req: Request, res: Response, next: NextFu
   });
 });
 
+declare module 'express' {
+  interface Request {
+    user?: IUser;
+  }
+}
+
 const protect = asyncErrorHandler(async (req: Request, res: Response, next: NextFunction) => {
   let token = '';
   // 1) Get token and check if it exists.
@@ -121,8 +128,17 @@ const protect = asyncErrorHandler(async (req: Request, res: Response, next: Next
 
   // User is authenticated, then grant access to protected route.
   // NOTE: Check TypeScript
-  // req.user = freshUser;
+  req.user = freshUser;
   next();
 });
 
-export default { register, login, protect };
+const restrictTo =
+  (...roles: Array<string>) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    if (req.user !== undefined && !roles.includes(req.user.role)) {
+      return next(new AppError(`You do not have the permission to preform this action`, 403));
+    }
+    next();
+  };
+
+export default { register, login, protect, restrictTo };
