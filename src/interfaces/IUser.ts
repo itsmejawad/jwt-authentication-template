@@ -4,7 +4,6 @@ export enum UserRole {
   Admin = 'admin',
   User = 'user',
 }
-
 export interface IUser extends Document {
   _id?: string;
   name: string;
@@ -16,6 +15,7 @@ export interface IUser extends Document {
   passwordResetExpires?: Date;
   confirmPassword?: string;
   changedPasswordAt?: Date;
+  isActive: boolean;
 
   isPasswordCorrect(candidatePassword: string, userPassword: string): Promise<boolean>;
   hasChangedPassword(this: IUser, jwtTimestamp: number): boolean;

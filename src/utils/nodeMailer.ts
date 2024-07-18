@@ -9,7 +9,7 @@ interface EmailOptions {
 
 // Define the sendEmail function with type annotations
 const sendEmail = async (options: EmailOptions): Promise<void> => {
-  // Create Transporter
+  // 1) Create Transporter
   const transporter: Transporter = nodemailer.createTransport({
     host: process.env.MAILTRAP_HOST,
     port: process.env.MAILTRAP_PORT,
@@ -19,16 +19,16 @@ const sendEmail = async (options: EmailOptions): Promise<void> => {
     },
   } as TransportOptions);
 
-  // Define the email options
+  // 2) Define the email options
   const mailOptions: SendMailOptions = {
     from: `Jawad Aldabas <hello@jawadaldabas.com>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
-    // TODO: Send email as HTML.
+    // TODO: Send email as HTML if necessary.
   };
 
-  // Send the email
+  // 3) Send the email
   await transporter.sendMail(mailOptions);
 };
 

@@ -1,13 +1,16 @@
-import User from '../models/userModel';
-import AppError from '../utils/appError';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import User from '../models/userModel';
+import asyncErrorHandler from '../utils/asyncErrorHandler';
+import sendEmail from '../utils/nodeMailer';
+import AppError from '../utils/appError';
 import { NextFunction, Request, RequestHandler, Response } from 'express';
+import { IUser } from '../interfaces/IUser';
 import { registerSchema } from '../schemas/registerSchema';
 import { loginSchema } from '../schemas/loginSchema';
-import asyncErrorHandler from '../utils/asyncErrorHandler';
-import { IUser } from '../interfaces/IUser';
-import sendEmail from '../utils/nodeMailer';
+import { forgotPasswordSchema } from '../schemas/forgotPasswordSchema';
+import { resetPasswordSchema } from '../schemas/resetPasswordSchema';
+
 const signToken = (id: string): string => {
   return jwt.sign({ id }, process.env.JWT_SECRET!, {
     expiresIn: process.env.JWT_EXPIRES_IN || '',
@@ -17,9 +20,23 @@ const signToken = (id: string): string => {
 const createSendToken = (user: IUser, statusCode: number, res: Response): void => {
   const token = signToken(user._id as string);
 
+  const cookieOptions = {
+    expires: new Date(Date.now() + Number(process.env.JWT_COOKIE_EXPIRES_IN) * 24 * 60 * 60 * 1000),
+    secure: process.env.NODE_ENV === 'development' ? false : true,
+    httpOnly: true,
+  };
+  res.cookie('jwt', token, cookieOptions);
+
   res.status(statusCode).json({
     status: 'success',
     token,
+    user: {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      _id: user._id,
+    },
   });
 };
 
@@ -43,23 +60,22 @@ const jwtVerifyPromisified = (token: string, secret: string): Promise<JwtPayload
   });
 };
 
-// TODO: Make sure to hide the password in the JSON response.
 const register: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { name, email, password, confirmPassword } = req.body;
-
     const validatedData = registerSchema.safeParse({
-      name,
-      email,
-      password,
-      confirmPassword,
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password,
+      confirmPassword: req.body.confirmPassword,
     });
 
     if (!validatedData.success) {
       return next(new AppError(validatedData?.error?.errors[0]?.message, 400));
     }
 
-    const newUser: IUser = new User(validatedData.data);
+    const { name, email, password, confirmPassword } = validatedData.data;
+
+    const newUser: IUser = new User({ name, email, password, confirmPassword });
     await newUser.save();
 
     createSendToken(newUser, 201, res);
@@ -68,28 +84,27 @@ const register: RequestHandler = asyncErrorHandler(
 
 const login: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { email, password } = req.body;
-
     // 1) Check data and validate it.
-    // 2) Check if email and password exists.
     const validatedData = loginSchema.safeParse({
-      email,
-      password,
+      email: req.body.email,
+      password: req.body.password,
     });
 
     if (!validatedData.success) {
       return next(new AppError(validatedData.error.errors[0].message, 400));
     }
 
-    // 3) Get user with correct credentials.
+    const { email, password } = validatedData.data;
+
+    // 2) Get user with correct credentials.
     const user: IUser | null = await User.findOne({ email }).select('+password');
 
-    // 4) Check if user exists and password is correct.
-    if (!user || !(await user?.isPasswordCorrect(password, user?.password))) {
+    // 3) Check if user exists and password is correct.
+    if (!user || !(await user?.isPasswordCorrect(password, user.password))) {
       return next(new AppError('Incorrect email or password.', 401));
     }
 
-    // 5) Send token to user.
+    // 4) Send token to user.
     createSendToken(user, 200, res);
   }
 );
@@ -128,7 +143,6 @@ const protect: RequestHandler = asyncErrorHandler(
     }
 
     // User is authenticated, then grant access to protected route.
-    // NOTE: Check TypeScript
     req.user = freshUser;
     next();
   }
@@ -145,26 +159,34 @@ const restrictTo =
 
 const forgotPassword: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { email } = req.body;
+    // 1) Check data and validate it.
+    const validatedData = forgotPasswordSchema.safeParse({ email: req.body.body });
 
-    // Get user based on posted email
+    if (!validatedData.success) {
+      return next(new AppError(validatedData?.error?.errors[0]?.message, 400));
+    }
+
+    const { email } = validatedData.data;
+
+    // Get user based on posted email.
     const user: IUser | null = await User.findOne({ email });
 
     if (!user) {
       return next(new AppError(`User not found.`, 404));
     }
 
-    // Generate password reset token
+    // Generate password reset token.
     const resetPasswordToken = user.generateResetPasswordToken();
     await user.save({ validateBeforeSave: false });
 
-    // Send token to the email
+    // Send token to the email.
     const resetURL = `${req.protocol}://${req.get(
       'host'
     )}/api/v1/users/reset-password/${resetPasswordToken}`;
 
     const message = `Reset your password using the following link ${resetURL}`;
 
+    // TODO: Write a professional email.
     try {
       await sendEmail({
         email: user.email,
@@ -187,54 +209,80 @@ const forgotPassword: RequestHandler = asyncErrorHandler(
 
 const resetPassword: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // TODO: Make hash token function for when generating email token
+    // TODO: Make hash token function for when generating email token.
     const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
     if (!hashedToken) {
       next(new AppError(`Token has not been provided.`, 401));
     }
 
-    // Get token based on user
+    // Get token based on user and based on whether reset token > now.
     const user: IUser | null = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() },
     });
 
-    // Check if token has not expired or valid, if not reset the password
+    // Check if token has not expired or valid, if not reset the password.
     if (!user) {
       return next(new AppError(`Token is invalid or expired.`, 404));
     }
-    const { password, confirmPassword } = req.body;
 
+    // Check data and validate it.
+    const validatedData = resetPasswordSchema.safeParse({
+      password: req.body.password,
+      confirmPassword: req.body.confirmPassword,
+    });
+
+    if (!validatedData.success) {
+      return next(new AppError(validatedData?.error?.errors[0]?.message, 400));
+    }
+
+    const { password, confirmPassword } = validatedData.data;
+
+    // Update password and confirm password.
     user.password = password;
     user.confirmPassword = confirmPassword;
+
+    // Delete token and token expiry date.
     user.passwordResetExpires = undefined;
     user.passwordResetToken = undefined;
     await user.save();
 
-    // Update the changedPasswordAt to now (Done using the built in Middleware in userModel)
+    // Update the changedPasswordAt to now (Done using the built in Middleware in userModel).
 
-    // Send token to the user
+    // Send token to the user.
     createSendToken(user, 200, res);
   }
 );
 
 const updatePassword: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // Get the logged in user
+    // Get the logged in user.
     const user: IUser | null = await User.findById(req?.user?.id).select('+password');
 
-    // Check if the entered password matches the actual password
+    // Check if the entered password matches the actual password.
     if (!user || !(await user?.isPasswordCorrect(req.body.currentPassword, user.password))) {
       return next(new AppError('Your current password is wrong.', 401));
     }
 
-    // Update password
-    user.password = req.body.password;
-    user.confirmPassword = req.body.confirmPassword;
+    // Check data and validate it.
+    const validatedData = resetPasswordSchema.safeParse({
+      password: req.body.password,
+      confirmPassword: req.body.confirmPassword,
+    });
+
+    if (!validatedData.success) {
+      return next(new AppError(validatedData?.error?.errors[0]?.message, 400));
+    }
+
+    const { password, confirmPassword } = validatedData.data;
+
+    // Update password.
+    user.password = password;
+    user.confirmPassword = confirmPassword;
     await user.save();
 
-    // Send token to the user
+    // Send token to the user.
     createSendToken(user, 200, res);
   }
 );

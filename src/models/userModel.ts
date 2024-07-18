@@ -1,4 +1,4 @@
-import { model, Schema } from 'mongoose';
+import { model, Query, Schema } from 'mongoose';
 import { IUser, UserRole } from '../interfaces/IUser';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -16,7 +16,7 @@ const userSchema = new Schema<IUser>(
       required: [true, 'Email is a required field.'],
       unique: true,
       lowercase: true,
-      // TODO: Validate email formate
+      // TODO: Validate email formate in the Database.
     },
     photo: String,
     role: {
@@ -53,6 +53,11 @@ const userSchema = new Schema<IUser>(
     passwordResetExpires: {
       type: Date,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+      select: false,
+    },
   },
   { versionKey: false }
 );
@@ -81,6 +86,14 @@ userSchema.pre<IUser>(
       return next();
     }
     this.changedPasswordAt = new Date(Date.now() - 1000);
+    next();
+  }
+);
+
+userSchema.pre<Query<IUser, IUser>>(
+  /^find/,
+  async function (this: Query<IUser, IUser>, next: (err?: Error) => void): Promise<void> {
+    this.find({ isActive: { $ne: false } });
     next();
   }
 );

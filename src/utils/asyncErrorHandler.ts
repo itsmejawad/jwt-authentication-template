@@ -1,7 +1,7 @@
+// TODO: Check TypeScript here again.
 import { Request, Response, NextFunction } from 'express';
 
 // Define a type that includes functions returning a Promise
-// NOTE: Check TypeScript here again.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AsyncRequestHandler = (req: Request, res: Response, next: NextFunction) => Promise<any> | void;
 

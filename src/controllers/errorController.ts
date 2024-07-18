@@ -1,8 +1,10 @@
+// TODO: Huge improvements on TypeScript must be applied to this file.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CastError } from 'mongoose';
 import AppError from '../utils/appError';
 import { NextFunction, Request, Response } from 'express';
 
+// Send Errors
 const sendErrorToDev = (err: AppError, res: Response) => {
   res.status(err.statusCode).json({
     status: err.status,
@@ -48,7 +50,6 @@ const handleValidationErrorMongoDb = (err: any) => {
 };
 
 // JWT Token Errors
-
 const handleJwtTokenError = () => new AppError(`Invalid token.`, 401);
 
 const handleJwtExpiredTokenError = () => new AppError(`Token has expired.`, 401);
@@ -64,11 +65,11 @@ const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFun
     let error = { ...err };
     error.message = err.message;
 
-    // TODO: Handle all MongoDB errors.
     // MongoDB Errors:
     if (err.name === 'CastError') error = handleCastErrorMongoDb(error);
     if (error.code === 11000) error = handleDuplicateFieldsMongoDb(error);
     if (err.name === 'ValidationError') error = handleValidationErrorMongoDb(error);
+
     // JWT Errors:
     if (err.name === 'JsonWebTokenError') error = handleJwtTokenError();
     if (err.name === 'TokenExpiredError') error = handleJwtExpiredTokenError();
