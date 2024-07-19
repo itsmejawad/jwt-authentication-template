@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import ExpressMongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
+import cors from 'cors';
 
 // Create Node.js app.
 const app: Express = express();
@@ -19,6 +20,9 @@ const limiter = rateLimit({
 });
 
 app.use('/api', limiter);
+
+// CORS
+app.use(cors());
 
 // Set security HTTP headers using helmet middleware.
 app.use(helmet());

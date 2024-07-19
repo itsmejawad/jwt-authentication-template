@@ -6,7 +6,6 @@ import { CastError } from 'mongoose';
 import AppError from '../utils/appError';
 import { NextFunction, Request, Response } from 'express';
 
-// Send Errors
 const sendErrorToDev = (err: AppError, res: Response) => {
   res.status(err.statusCode).json({
     status: err.status,
@@ -44,8 +43,7 @@ const handleDuplicateFieldsMongoDb = (err: any) => {
 
 const handleValidationErrorMongoDb = (err: any) => {
   const errors = Object.values(err.errors).map((el: any) => el.message);
-  const message = `Invalid input data. ${errors.join('. ')}`;
-  return new AppError(message, 400);
+  return new AppError(errors[0], 400);
 };
 
 // JWT Token Errors
@@ -57,12 +55,14 @@ const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFun
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'Error';
 
+  console.log(err.name);
   if (process.env.NODE_ENV === 'development') {
+    console.log(err);
+
     sendErrorToDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
     let error = { ...err };
     error.message = err.message;
-
     // MongoDB Errors:
     if (err.name === 'CastError') error = handleCastErrorMongoDb(error);
     if (error.code === 11000) error = handleDuplicateFieldsMongoDb(error);

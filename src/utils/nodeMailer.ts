@@ -25,7 +25,6 @@ const sendEmail = async (options: EmailOptions): Promise<void> => {
     to: options.email,
     subject: options.subject,
     text: options.message,
-    // TODO: Send email as HTML if necessary.
   };
 
   // 3) Send the email

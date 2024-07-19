@@ -17,12 +17,18 @@ const userSchema = new Schema<IUser>(
       required: [true, 'Email is a required field.'],
       unique: true,
       lowercase: true,
-      // TODO: Validate email formate in the Database.
+      validate: {
+        validator: function (email: string) {
+          const re = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+          return re.test(email);
+        },
+        message: 'Invalid email format.',
+      },
     },
     photo: String,
     role: {
       type: String,
-      enum: Object.values(UserRole),
+      enum: UserRole,
       default: UserRole.User,
     },
     password: {
@@ -37,10 +43,9 @@ const userSchema = new Schema<IUser>(
       required: [true, 'Confirm Password is a required field.'],
       minLength: [8, 'Password length must be 8 characters or more.'],
       maxLength: [64, 'Password length must be 64 characters or less.'],
-      //  NOTE: This validator, will only work on the .save() mongoDB method.
       validate: {
-        validator: function (this: IUser, el: string) {
-          return this.password === el;
+        validator: function (this: IUser, confirmPassword: string) {
+          return this.password === confirmPassword;
         },
         message: 'Passwords are not the same.',
       },
@@ -65,6 +70,7 @@ const userSchema = new Schema<IUser>(
   { versionKey: false }
 );
 
+// "save" will only be executed when we use .save() or .create()
 userSchema.pre<IUser>(
   'save',
   async function (this: IUser, next: (err?: Error) => void): Promise<void> {
