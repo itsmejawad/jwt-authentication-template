@@ -1,15 +1,17 @@
-import crypto from 'crypto';
+import { NextFunction, Request, RequestHandler, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/userModel';
 import asyncErrorHandler from '../utils/asyncErrorHandler';
 import sendEmail from '../utils/nodeMailer';
 import AppError from '../utils/appError';
-import { NextFunction, Request, RequestHandler, Response } from 'express';
+import cryptoHash from '../utils/cryptoHash';
 import { IUser } from '../interfaces/IUser';
-import { registerSchema } from '../schemas/registerSchema';
-import { loginSchema } from '../schemas/loginSchema';
-import { forgotPasswordSchema } from '../schemas/forgotPasswordSchema';
-import { resetPasswordSchema } from '../schemas/resetPasswordSchema';
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from '../schemas/authSchemas';
 
 const signToken = (id: string): string => {
   return jwt.sign({ id }, process.env.JWT_SECRET!, {
@@ -28,14 +30,13 @@ const createSendToken = (user: IUser, statusCode: number, res: Response): void =
   res.cookie('jwt', token, cookieOptions);
 
   res.status(statusCode).json({
-    status: 'success',
+    status: 'Success',
     token,
     user: {
+      _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      isActive: user.isActive,
-      _id: user._id,
     },
   });
 };
@@ -129,9 +130,8 @@ const protect: RequestHandler = asyncErrorHandler(
 
     // 2) Verification.
     const decoded = await jwtVerifyPromisified(token, process.env.JWT_SECRET || '');
-
     // 3) Check if user still exists.
-    const freshUser: IUser | null = await User.findById(decoded.id);
+    const freshUser: IUser | null = await User.findById(decoded.id).select('+changedPasswordAt');
 
     if (!freshUser) {
       return next(new AppError('User not found.', 401));
@@ -160,7 +160,7 @@ const restrictTo =
 const forgotPassword: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     // 1) Check data and validate it.
-    const validatedData = forgotPasswordSchema.safeParse({ email: req.body.body });
+    const validatedData = forgotPasswordSchema.safeParse({ email: req.body.email });
 
     if (!validatedData.success) {
       return next(new AppError(validatedData?.error?.errors[0]?.message, 400));
@@ -209,8 +209,8 @@ const forgotPassword: RequestHandler = asyncErrorHandler(
 
 const resetPassword: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // TODO: Make hash token function for when generating email token.
-    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    // Hash token using same algorithm in the userModel middleware.
+    const hashedToken = cryptoHash(req.params.token);
 
     if (!hashedToken) {
       next(new AppError(`Token has not been provided.`, 401));

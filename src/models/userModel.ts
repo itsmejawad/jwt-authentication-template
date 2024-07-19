@@ -2,6 +2,7 @@ import { model, Query, Schema } from 'mongoose';
 import { IUser, UserRole } from '../interfaces/IUser';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import cryptoHash from '../utils/cryptoHash';
 
 const userSchema = new Schema<IUser>(
   {
@@ -43,9 +44,11 @@ const userSchema = new Schema<IUser>(
         },
         message: 'Passwords are not the same.',
       },
+      select: false,
     },
     changedPasswordAt: {
       type: Date,
+      select: false,
     },
     passwordResetToken: {
       type: String,
@@ -115,7 +118,7 @@ userSchema.methods.hasChangedPassword = function (this: IUser, jwtTimestamp: num
 
 userSchema.methods.generateResetPasswordToken = function (this: IUser): string {
   const resetPasswordToken = crypto.randomBytes(32).toString('hex');
-  this.passwordResetToken = crypto.createHash('sha256').update(resetPasswordToken).digest('hex');
+  this.passwordResetToken = cryptoHash(resetPasswordToken);
   this.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000);
   return resetPasswordToken;
 };

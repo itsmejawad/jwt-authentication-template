@@ -1,5 +1,7 @@
-// TODO: Huge improvements on TypeScript must be applied to this file.
+/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// TODO: Huge improvements on TypeScript must be applied to this file.
+
 import { CastError } from 'mongoose';
 import AppError from '../utils/appError';
 import { NextFunction, Request, Response } from 'express';
@@ -15,15 +17,12 @@ const sendErrorToDev = (err: AppError, res: Response) => {
 };
 
 const sendErrorToProduction = (err: AppError, res: Response) => {
-  // If error is operational then display more details.
   if (err.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
     });
-  }
-  // If error is not operational, show default message.
-  else {
+  } else {
     console.error('Something went wrong!', err);
     res.status(500).json({
       status: 'Error',
@@ -51,13 +50,12 @@ const handleValidationErrorMongoDb = (err: any) => {
 
 // JWT Token Errors
 const handleJwtTokenError = () => new AppError(`Invalid token.`, 401);
-
 const handleJwtExpiredTokenError = () => new AppError(`Token has expired.`, 401);
 
 // Global Error Middleware
 const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   err.statusCode = err.statusCode || 500;
-  err.status = err.status || 'error';
+  err.status = err.status || 'Error';
 
   if (process.env.NODE_ENV === 'development') {
     sendErrorToDev(err, res);

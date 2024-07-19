@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-
+import { Model } from 'mongoose';
 import AppError from '../utils/appError';
 import asyncErrorHandler from '../utils/asyncErrorHandler';
-import { Model } from 'mongoose';
+import APIFeatures from '../utils/apiFeatures';
 
-const deleteOne = (Model: Model<unknown>) =>
+const deleteOne = <T>(Model: Model<T>) =>
   asyncErrorHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
     const doc = await Model.findByIdAndDelete(id);
@@ -19,8 +19,7 @@ const deleteOne = (Model: Model<unknown>) =>
     });
   });
 
-// NOTE: User middlewares won't run when using findByIdAndUpdate()
-const updateOne = (Model: Model<unknown>) =>
+const updateOne = <T>(Model: Model<T>) =>
   asyncErrorHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
 
@@ -41,7 +40,7 @@ const updateOne = (Model: Model<unknown>) =>
     });
   });
 
-const createOne = (Model: Model<unknown>) =>
+const createOne = <T>(Model: Model<T>) =>
   asyncErrorHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const doc = await Model.create(req.body);
 
@@ -57,7 +56,7 @@ const createOne = (Model: Model<unknown>) =>
     });
   });
 
-const getOne = (Model: Model<unknown>) =>
+const getOne = <T>(Model: Model<T>) =>
   asyncErrorHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
 
@@ -75,9 +74,15 @@ const getOne = (Model: Model<unknown>) =>
     });
   });
 
-const getAll = (Model: Model<unknown>) =>
+const getAll = <T>(Model: Model<T>) =>
   asyncErrorHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const docs = await Model.find();
+    const features = new APIFeatures<T>(Model.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+
+    const docs = await features.query;
 
     if (!docs) {
       return next(new AppError(`No documents were found.`, 404));
@@ -85,6 +90,7 @@ const getAll = (Model: Model<unknown>) =>
 
     res.status(200).json({
       status: 'Success',
+      results: docs.length,
       data: {
         docs,
       },
