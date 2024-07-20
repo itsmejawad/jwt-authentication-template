@@ -8,7 +8,7 @@
     "build": "rimraf dist && tsc",
     "prestart": "npm run build",
     "start": "node dist/server.js",
-    "serve": "concurrently \"tsc -w\" \"nodemon dist/server.js\""
+    "serve": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/server.ts"
   },
   "author": "Jawad Aldabas",
   "license": "ISC",
