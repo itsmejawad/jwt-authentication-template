@@ -1,7 +1,8 @@
 import { model, Query, Schema } from 'mongoose';
-import { IUser, UserRole } from '../interfaces/IUser';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+
+import { IUser, UserRole } from '../interfaces/IUser';
 import cryptoHash from '../utils/cryptoHash';
 
 const userSchema = new Schema<IUser>(

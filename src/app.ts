@@ -1,13 +1,14 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
-import { globalErrorHandler } from './controllers/errorController';
 import morgan from 'morgan';
-import AppError from './utils/appError';
-import userRouter from './routes/userRoutes';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import ExpressMongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
 import cors from 'cors';
+
+import { globalErrorHandler } from './controllers/errorController';
+import AppError from './utils/appError';
+import userRouter from './routes/userRoutes';
 
 // Create Node.js app.
 const app: Express = express();

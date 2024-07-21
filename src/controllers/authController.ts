@@ -1,10 +1,6 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/userModel';
-import asyncErrorHandler from '../utils/asyncErrorHandler';
-import sendEmail from '../utils/nodeMailer';
-import AppError from '../utils/appError';
-import cryptoHash from '../utils/cryptoHash';
+
 import { IUser } from '../interfaces/IUser';
 import {
   registerSchema,
@@ -12,6 +8,11 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from '../schemas/authSchemas';
+import User from '../models/userModel';
+import asyncErrorHandler from '../utils/asyncErrorHandler';
+import sendEmail from '../utils/nodeMailer';
+import AppError from '../utils/appError';
+import cryptoHash from '../utils/cryptoHash';
 
 const signToken = (id: string): string => {
   return jwt.sign({ id }, process.env.JWT_SECRET!, {

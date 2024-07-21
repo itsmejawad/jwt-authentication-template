@@ -3,8 +3,9 @@
 // TODO: Huge improvements on TypeScript must be applied to this file.
 
 import { CastError } from 'mongoose';
-import AppError from '../utils/appError';
 import { NextFunction, Request, Response } from 'express';
+
+import AppError from '../utils/appError';
 
 const sendErrorToDev = (err: AppError, res: Response) => {
   res.status(err.statusCode).json({

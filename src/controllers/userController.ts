@@ -1,9 +1,10 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
+
+import { IUser } from '../interfaces/IUser';
 import asyncErrorHandler from '../utils/asyncErrorHandler';
 import User from '../models/userModel';
 import AppError from '../utils/appError';
 import factory from './handlerFactory';
-import { IUser } from '../interfaces/IUser';
 
 const updateMe: RequestHandler = asyncErrorHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
