@@ -8,7 +8,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from '../schemas/authSchemas';
-import User from '../models/userModel';
+import { User } from '../models/userModel';
 import asyncErrorHandler from '../utils/asyncErrorHandler';
 import sendEmail from '../utils/nodeMailer';
 import AppError from '../utils/appError';

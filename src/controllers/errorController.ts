@@ -55,11 +55,7 @@ const handleJwtExpiredTokenError = () => new AppError(`Token has expired.`, 401)
 const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'Error';
-
-  console.log(err.name);
   if (process.env.NODE_ENV === 'development') {
-    console.log(err);
-
     sendErrorToDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
     let error = { ...err };

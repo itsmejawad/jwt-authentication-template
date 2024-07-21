@@ -2,7 +2,7 @@ import { NextFunction, Request, RequestHandler, Response } from 'express';
 
 import { IUser } from '../interfaces/IUser';
 import asyncErrorHandler from '../utils/asyncErrorHandler';
-import User from '../models/userModel';
+import { User } from '../models/userModel';
 import AppError from '../utils/appError';
 import factory from './handlerFactory';
 

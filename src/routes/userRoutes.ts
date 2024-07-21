@@ -19,7 +19,7 @@ router.patch('/update-me', userController.updateMe);
 router.delete('/delete-me', userController.deleteMe);
 
 // Protect all future routes to only admin access
-router.use(authController.restrictTo('admin'));
+router.use(authController.restrictTo('Admin'));
 
 // User Controllers
 router.route('/').get(userController.getAllUsers).post(userController.createUser);

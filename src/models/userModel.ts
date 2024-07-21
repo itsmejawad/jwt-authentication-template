@@ -26,7 +26,6 @@ const userSchema = new Schema<IUser>(
         message: 'Invalid email format.',
       },
     },
-    photo: String,
     role: {
       type: String,
       enum: UserRole,
@@ -68,7 +67,7 @@ const userSchema = new Schema<IUser>(
       select: false,
     },
   },
-  { versionKey: false }
+  { discriminatorKey: 'role', versionKey: false }
 );
 
 // "save" will only be executed when we use .save() or .create()
@@ -132,4 +131,20 @@ userSchema.methods.generateResetPasswordToken = function (this: IUser): string {
 
 const User = model<IUser>('User', userSchema);
 
-export default User;
+const Admin = User.discriminator(
+  'Admin',
+  new Schema(
+    { phoneNumber: { type: Number, required: [true, 'Phone number is a required field'] } },
+    { discriminatorKey: 'role' }
+  )
+);
+
+const Supplier = User.discriminator(
+  'Supplier',
+  new Schema(
+    { company: { type: String, required: [true, 'Company is a required field'] } },
+    { discriminatorKey: 'role' }
+  )
+);
+
+export { User, Admin, Supplier };
