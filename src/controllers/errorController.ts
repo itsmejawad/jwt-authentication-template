@@ -33,7 +33,7 @@ const sendErrorToProduction = (err: AppError, res: Response) => {
 
 // MongoDB Errors
 const handleCastErrorMongoDb = (err: CastError) => {
-  new AppError(`Invalid ${err.path}: ${err.value}`, 400);
+  return new AppError(`Invalid ${err.path}: ${err.value}`, 400);
 };
 
 const handleDuplicateFieldsMongoDb = (err: any) => {
